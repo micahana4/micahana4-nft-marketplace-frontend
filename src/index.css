@@ -1,11 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* App wrapper defaults */
-html, body, #root {
-	height: 100%;
-}
-body {
-	@apply bg-neutral-950 text-neutral-100 antialiased;
+@layer base {
+	html, body, #root { height: 100%; }
+	body { @apply bg-zinc-900 text-zinc-100 antialiased; }
 }
