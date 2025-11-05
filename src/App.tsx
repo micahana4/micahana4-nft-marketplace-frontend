@@ -1,36 +1,24 @@
-import { createNetworkConfig, SuiClientProvider, WalletProvider, ConnectButton } from '@mysten/dapp-kit';
-import { getFullnodeUrl } from '@mysten/sui/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Minter from './components/Mint';
-import './App.css';
-import { StrictMode } from 'react';
-
-// Config options for the networks you want to connect to
-const { networkConfig } = createNetworkConfig({
-  localnet: { url: getFullnodeUrl('localnet') },
-  testnet: { url: getFullnodeUrl('testnet') },
-  mainnet: { url: getFullnodeUrl('mainnet') },
-});
-
-const queryClient = new QueryClient();
+import WalletPanel from './components/WalletPanel';
+import MintForm from './components/MintForm';
+import MyNFTs from './components/MyNFTs';
+import MarketplacePanel from './components/MarketplacePanel';
+import AdminPanel from './components/AdminPanel';
 
 function App() {
-  return (
-    <StrictMode>
-        <QueryClientProvider client={queryClient}>
-            <SuiClientProvider networks={networkConfig} defaultNetwork='testnet'>
-                <WalletProvider>
-                  <header className='app-header'>
-                    <ConnectButton />
-                  </header>
-                  <main className='app-main'>
-                    <Minter />
-                  </main>
-                </WalletProvider>
-            </SuiClientProvider>
-        </QueryClientProvider>
-      </StrictMode>
-  );
+	return (
+		<div className="mx-auto max-w-6xl p-4">
+			<header className="mb-4 flex items-center justify-between">
+				<h1 className="text-xl font-semibold">Sui NFT Marketplace</h1>
+				<WalletPanel />
+			</header>
+			<main className="space-y-6">
+				<MintForm />
+				<MyNFTs />
+				<MarketplacePanel />
+				<AdminPanel />
+			</main>
+		</div>
+	);
 }
 
 export default App
