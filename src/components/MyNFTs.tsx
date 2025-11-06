@@ -14,6 +14,7 @@ export default function MyNFTs() {
 	const [error, setError] = useState<string | null>(null);
 
 	const owner = account?.address;
+	const [refreshTrigger, setRefreshTrigger] = useState(0);
 
 	useEffect(() => {
 		if (!owner || !TYPE_NFT) {
@@ -41,7 +42,22 @@ export default function MyNFTs() {
 		return () => {
 			cancelled = true;
 		};
-	}, [owner, client]);
+	}, [owner, client, refreshTrigger]);
+
+	// Listen for NFT minted event to refresh
+	useEffect(() => {
+		const handleNftMinted = () => {
+			// Small delay to ensure blockchain state is updated
+			setTimeout(() => {
+				setRefreshTrigger(prev => prev + 1);
+			}, 1000);
+		};
+
+		window.addEventListener('nftMinted', handleNftMinted);
+		return () => {
+			window.removeEventListener('nftMinted', handleNftMinted);
+		};
+	}, []);
 
 	if (!owner) return null;
 

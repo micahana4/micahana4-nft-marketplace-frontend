@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { PACKAGE_ID, MODULE_NFT, FN_MINT } from '../configs/constants';
 
 export default function MintForm() {
 	const account = useCurrentAccount();
 	const { mutateAsync, isPending } = useSignAndExecuteTransaction();
+    const suiClient = useSuiClient();
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
 	const [imageUrl, setImageUrl] = useState('');
 	const [status, setStatus] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [txDigest, setTxDigest] = useState<string | null>(null);
+    const [nftId, setNftId] = useState<string | null>(null);
+    const [modalStatus, setModalStatus] = useState<string>('');
 
 	async function onSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -25,14 +30,37 @@ export default function MintForm() {
 			arguments: [tx.pure.string(name), tx.pure.string(description), tx.pure.string(imageUrl)],
 		});
 		try {
+			setIsModalOpen(true);
+			setModalStatus('Submitting transaction…');
+			setTxDigest(null);
+			setNftId(null);
 			const res = await mutateAsync({
 				signer: account.address,
 				transaction: tx,
 				options: { showEffects: true },
 			});
+			const digest = (res as any)?.digest as string | undefined;
+			if (digest) {
+				setTxDigest(digest);
+				setModalStatus('Transaction submitted. Waiting for confirmation…');
+				const confirmed = await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
+				const created = (confirmed as any)?.effects?.created;
+				const createdId = created && created.length > 0 ? created[0]?.reference?.objectId : null;
+				if (createdId) {
+					setNftId(createdId);
+					setModalStatus('Mint confirmed');
+					// Dispatch custom event to refresh NFT lists
+					window.dispatchEvent(new CustomEvent('nftMinted', { detail: { nftId: createdId } }));
+				} else {
+					setModalStatus('Confirmed, but NFT id not found');
+				}
+			} else {
+				setModalStatus('Submitted. Digest unavailable from response.');
+			}
 			setStatus('Mint submitted');
 		} catch (e: any) {
 			setError(e?.message || 'Mint failed');
+			setModalStatus('Mint failed');
 		}
 	}
 
@@ -71,6 +99,27 @@ export default function MintForm() {
 			</form>
 			{status && <div className="mt-2 text-sm text-green-400">{status}</div>}
 			{error && <div className="mt-2 text-sm text-red-400">{error}</div>}
+
+			{isModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center">
+					<div className="absolute inset-0 bg-black/60" onClick={() => setIsModalOpen(false)} />
+					<div className="relative z-10 w-full max-w-lg rounded border border-neutral-700 bg-neutral-950 p-4 text-sm">
+						<div className="mb-2 text-base font-semibold">Mint Status</div>
+						<div className="mb-2">{modalStatus}</div>
+						{txDigest && (
+							<div className="mb-2 break-all">
+								Transaction: <a className="text-indigo-400 underline" href={`https://suiexplorer.com/txblock/${txDigest}?network=testnet`} target="_blank" rel="noreferrer">{txDigest}</a>
+							</div>
+						)}
+						{nftId && (
+							<div className="mb-2 break-all">NFT Object ID: {nftId}</div>
+						)}
+						<div className="mt-3 flex justify-end gap-2">
+							<button className="rounded border border-neutral-600 px-3 py-1" onClick={() => setIsModalOpen(false)}>Close</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</section>
 	);
 }
